@@ -2,26 +2,23 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import secureLocalStorage from "react-secure-storage";
 import { axiosInstance } from "../auth/AxiosConfig.jsx";
 
-let headersList = {
+// Utility agar header selalu fresh jika token berubah
+const getHeaders = () => ({
   Authorization: "Bearer " + secureLocalStorage.getItem("acessToken"),
   "Content-Type": "application/json",
-};
-
-let reqOptionsGetAll = {
-  url: "/api/categorys",
-  method: "GET",
-  headers: headersList,
-};
+});
 
 export const getAllCategory = createAsyncThunk(
   "category/getAllCategory",
-  async () => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.request(reqOptionsGetAll);
+      const response = await axiosInstance.get("/api/categorys", {
+        headers: getHeaders(),
+      });
       return response.data.result;
     } catch (error) {
-      const data = JSON.parse(error.request.response);
-      throw new Error(data ? data.message : error.message);
+      const message = error.response?.data?.message || error.message;
+      return rejectWithValue(message);
     }
   }
 );
@@ -38,6 +35,7 @@ const categorySlice = createSlice({
     builder
       .addCase(getAllCategory.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getAllCategory.fulfilled, (state, action) => {
         state.loading = false;
@@ -45,7 +43,7 @@ const categorySlice = createSlice({
       })
       .addCase(getAllCategory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload; // pakai rejectWithValue
       });
   },
 });
