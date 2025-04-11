@@ -9,4 +9,9 @@ export const store = configureStore({
     product: productReducer,
     cart: cartReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false, // Disable warning kalau pakai localStorage, FormData, dll
+    }),
+  devTools: process.env.NODE_ENV !== "production", // Enable Redux DevTools hanya di dev
 });
