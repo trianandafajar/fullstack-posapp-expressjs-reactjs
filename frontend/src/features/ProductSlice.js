@@ -2,43 +2,42 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import secureLocalStorage from "react-secure-storage";
 import { axiosInstance } from "../auth/AxiosConfig.jsx";
 
-let headersList = {
+// Dynamic headers untuk update token yang terbaru
+const getHeaders = () => ({
   Authorization: "Bearer " + secureLocalStorage.getItem("acessToken"),
   "Content-Type": "application/json",
-};
+});
 
+// GET all products (with search)
 export const getAllProduct = createAsyncThunk(
   "product/getAllProduct",
-  async (keyword) => {
-    let reqOptionsGetAll = {
-      url: `/api/products?search_query=${keyword}&limit=250`,
-      method: "GET",
-      headers: headersList,
-    };
+  async (keyword = "", { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.request(reqOptionsGetAll);
+      const response = await axiosInstance.get(
+        `/api/products?search_query=${keyword}&limit=250`,
+        { headers: getHeaders() }
+      );
       return response.data.result;
     } catch (error) {
-      const data = JSON.parse(error.request.response);
-      throw new Error(data ? data.message : error.message);
+      const message = error.response?.data?.message || error.message;
+      return rejectWithValue(message);
     }
   }
 );
 
+// GET products by category ID
 export const getAllByCategory = createAsyncThunk(
   "product/getAllByCategory",
-  async (id) => {
-    let reqOptions = {
-      url: `/api/products/category/${id}`,
-      method: "GET",
-      headers: headersList,
-    };
+  async (id, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.request(reqOptions);
+      const response = await axiosInstance.get(
+        `/api/products/category/${id}`,
+        { headers: getHeaders() }
+      );
       return response.data.result;
     } catch (error) {
-      const data = JSON.parse(error.request.response);
-      throw new Error(data ? data.message : error.message);
+      const message = error.response?.data?.message || error.message;
+      return rejectWithValue(message);
     }
   }
 );
@@ -53,8 +52,10 @@ const productSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // get all product
       .addCase(getAllProduct.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getAllProduct.fulfilled, (state, action) => {
         state.loading = false;
@@ -62,11 +63,12 @@ const productSlice = createSlice({
       })
       .addCase(getAllProduct.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
       // get by category
       .addCase(getAllByCategory.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(getAllByCategory.fulfilled, (state, action) => {
         state.loading = false;
@@ -74,7 +76,7 @@ const productSlice = createSlice({
       })
       .addCase(getAllByCategory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       });
   },
 });
