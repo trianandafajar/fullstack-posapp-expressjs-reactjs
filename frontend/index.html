@@ -2,12 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="#" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>POS APP</title>
+    <meta name="description" content="Point of Sale (POS) App built with React" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>POS App</title>
+
+    <!-- Tailwind CSS (optional if you're using it) -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet" />
+
+    <!-- Fonts (optional) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+    <!-- PWA manifest (optional) -->
+    <!-- <link rel="manifest" href="/manifest.webmanifest" /> -->
   </head>
-  <body>
+  <body class="bg-gray-100 text-gray-900 font-inter">
     <div id="root"></div>
+
+    <!-- Vite Entry Point -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
