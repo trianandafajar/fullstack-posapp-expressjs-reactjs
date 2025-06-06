@@ -8,133 +8,139 @@ const getHeaders = () => ({
   "Content-Type": "application/json",
 });
 
-export const getAllCart = createAsyncThunk("cart/getAllCart", async () => {
-  try {
-    const response = await axiosInstance.get("/api/carts", {
-      headers: getHeaders(),
-    });
-    return response.data.result;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message;
-    throw new Error(message);
-  }
-});
+// Error handler utility
+const handleError = (error) => {
+  const message = error.response?.data?.message || error.message;
+  throw new Error(message);
+};
 
-export const addToCart = createAsyncThunk("cart/addToCart", async (data) => {
-  try {
-    await axiosInstance.post("/api/carts", data, {
-      headers: getHeaders(),
-    });
-    const response = await axiosInstance.get("/api/carts", {
-      headers: getHeaders(),
-    });
-    return response.data.result;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message;
-    throw new Error(message);
+// Thunk untuk fetch cart data
+export const getAllCart = createAsyncThunk(
+  "cart/getAllCart",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get("/api/carts", {
+        headers: getHeaders(),
+      });
+      return response.data.result;
+    } catch (error) {
+      return rejectWithValue(handleError(error));
+    }
   }
-});
+);
 
-export const updateCart = createAsyncThunk("cart/updateCart", async (data) => {
-  try {
-    const updatedData = { ...data, totalPrice: data.qty * data.price };
-    await axiosInstance.put(`/api/carts/${data.id}`, updatedData, {
-      headers: getHeaders(),
-    });
-    const response = await axiosInstance.get("/api/carts", {
-      headers: getHeaders(),
-    });
-    return response.data.result;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message;
-    throw new Error(message);
+// Thunk untuk menambah item ke cart
+export const addToCart = createAsyncThunk(
+  "cart/addToCart",
+  async (data, { rejectWithValue }) => {
+    try {
+      await axiosInstance.post("/api/carts", data, {
+        headers: getHeaders(),
+      });
+      const response = await axiosInstance.get("/api/carts", {
+        headers: getHeaders(),
+      });
+      return response.data.result;
+    } catch (error) {
+      return rejectWithValue(handleError(error));
+    }
   }
-});
+);
 
-export const setDetail = createAsyncThunk("cart/setDetail", async (data) => data);
-
-export const deleteCart = createAsyncThunk("cart/deleteCart", async (data) => {
-  try {
-    await axiosInstance.delete(`/api/carts/${data.id}/${data.userId}`, {
-      headers: getHeaders(),
-    });
-    const response = await axiosInstance.get("/api/carts", {
-      headers: getHeaders(),
-    });
-    return response.data.result;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message;
-    throw new Error(message);
+// Thunk untuk update cart
+export const updateCart = createAsyncThunk(
+  "cart/updateCart",
+  async (data, { rejectWithValue }) => {
+    try {
+      const updatedData = { ...data, totalPrice: data.qty * data.price };
+      await axiosInstance.put(`/api/carts/${data.id}`, updatedData, {
+        headers: getHeaders(),
+      });
+      const response = await axiosInstance.get("/api/carts", {
+        headers: getHeaders(),
+      });
+      return response.data.result;
+    } catch (error) {
+      return rejectWithValue(handleError(error));
+    }
   }
-});
+);
+
+// Thunk untuk set detail cart
+export const setDetail = createAsyncThunk(
+  "cart/setDetail",
+  async (data) => data
+);
+
+// Thunk untuk delete cart
+export const deleteCart = createAsyncThunk(
+  "cart/deleteCart",
+  async (data, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`/api/carts/${data.id}/${data.userId}`, {
+        headers: getHeaders(),
+      });
+      const response = await axiosInstance.get("/api/carts", {
+        headers: getHeaders(),
+      });
+      return response.data.result;
+    } catch (error) {
+      return rejectWithValue(handleError(error));
+    }
+  }
+);
+
+const initialState = {
+  data: null,
+  loading: false,
+  error: null,
+  dataEdit: null,
+};
 
 const cartSlice = createSlice({
   name: "cart",
-  initialState: {
-    data: null,
-    loading: false,
-    error: null,
-    dataEdit: null,
+  initialState,
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    clearCart: (state) => {
+      state.data = null;
+      state.dataEdit = null;
+    },
   },
-  reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(getAllCart.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(getAllCart.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload;
-      })
-      .addCase(getAllCart.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
-      .addCase(addToCart.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(addToCart.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload;
-      })
-      .addCase(addToCart.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
-      .addCase(updateCart.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateCart.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload;
-      })
-      .addCase(updateCart.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      })
-
-      .addCase(setDetail.fulfilled, (state, action) => {
-        state.dataEdit = action.payload;
-      })
-
-      .addCase(deleteCart.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteCart.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload;
-      })
-      .addCase(deleteCart.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message;
-      });
+      // Handle loading state
+      .addMatcher(
+        (action) => action.type.endsWith('/pending'),
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        }
+      )
+      // Handle success state
+      .addMatcher(
+        (action) => action.type.endsWith('/fulfilled'),
+        (state, action) => {
+          state.loading = false;
+          if (action.type === 'cart/setDetail/fulfilled') {
+            state.dataEdit = action.payload;
+          } else {
+            state.data = action.payload;
+          }
+        }
+      )
+      // Handle error state
+      .addMatcher(
+        (action) => action.type.endsWith('/rejected'),
+        (state, action) => {
+          state.loading = false;
+          state.error = action.payload;
+        }
+      );
   },
 });
 
+export const { clearError, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;
