@@ -1,151 +1,186 @@
 import { Button, Col, Form, Modal, Row } from "react-bootstrap";
 import PropTypes from "prop-types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import secureLocalStorage from "react-secure-storage";
 import { axiosInstance } from "../auth/AxiosConfig.jsx";
 import { toast } from "react-toastify";
 
-const ProfilModal = (props) => {
-  const user = secureLocalStorage.getItem("user");
-  const { show, onHide, size } = props;
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+// Custom hook untuk form state
+const useFormState = (initialState) => {
+  const [state, setState] = useState(initialState);
+  const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name);
-      setUsername(user.userName);
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setState(prev => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
-  }, [user]);
+  }, [errors]);
 
-  const actionUpdate = async (e) => {
+  return { state, setState, errors, setErrors, handleChange };
+};
+
+// Validasi form
+const validateForm = (values) => {
+  const errors = {};
+  
+  if (!values.name.trim()) {
+    errors.name = 'Nama tidak boleh kosong';
+  }
+  
+  if (!values.userName.trim()) {
+    errors.userName = 'Username tidak boleh kosong';
+  }
+  
+  if (values.password) {
+    if (values.password.length < 6) {
+      errors.password = 'Password minimal 6 karakter';
+    }
+    if (values.password !== values.confirmPassword) {
+      errors.confirmPassword = 'Password tidak cocok';
+    }
+  }
+  
+  return errors;
+};
+
+const ProfilModal = ({ show, onHide, size }) => {
+  const user = secureLocalStorage.getItem("user");
+  
+  const initialState = useMemo(() => ({
+    name: '',
+    userName: '',
+    password: '',
+    confirmPassword: '',
+  }), []);
+
+  const { 
+    state: formData, 
+    setState: setFormData, 
+    errors, 
+    setErrors, 
+    handleChange 
+  } = useFormState(initialState);
+
+  // Reset form ketika modal dibuka
+  useEffect(() => {
+    if (show && user) {
+      setFormData({
+        ...initialState,
+        name: user.name,
+        userName: user.userName,
+      });
+      setErrors({});
+    }
+  }, [show, user, setFormData, initialState]);
+
+  const actionUpdate = useCallback(async (e) => {
     e.preventDefault();
 
-    let headersList = {
-      Authorization: "Bearer " + secureLocalStorage.getItem("acessToken"),
+    // Validasi form
+    const validationErrors = validateForm(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const headers = {
+      Authorization: `Bearer ${secureLocalStorage.getItem("acessToken")}`,
       "Content-Type": "application/json",
     };
 
-    let bodyContent = JSON.stringify({
-      name: name,
-      userName: username,
-      password: password,
-      confirmPassword: confirmPassword,
+    const requestData = {
+      name: formData.name,
+      userName: formData.userName,
+      password: formData.password || undefined, // Hanya kirim password jika diisi
+      confirmPassword: formData.confirmPassword || undefined,
       role: user.role,
-    });
-
-    let reqOptions = {
-      url: `/api/users/${user.id}`,
-      method: "PUT",
-      headers: headersList,
-      data: bodyContent,
     };
 
     try {
-      const response = await axiosInstance.request(reqOptions);
+      const response = await axiosInstance.put(
+        `/api/users/${user.id}`,
+        requestData,
+        { headers }
+      );
+
       if (response.data) {
+        secureLocalStorage.setItem("user", response.data.result);
         toast.success(response.data.message, {
           position: "top-center",
         });
-        props.onHide();
+        onHide();
       }
-      secureLocalStorage.setItem("user", response.data.result);
     } catch (error) {
-      const errMessage = JSON.parse(error.request.response);
-      toast.error(errMessage.message, {
+      const errorMessage = error.response?.data?.message || 'Terjadi kesalahan';
+      toast.error(errorMessage, {
         position: "top-center",
       });
     }
-  };
+  }, [formData, user, onHide]);
+
+  const renderFormField = useCallback((label, name, type = "text", sm = "3") => (
+    <Form.Group as={Row} className="mb-3">
+      <Form.Label column sm="2">
+        {label}
+      </Form.Label>
+      <Col sm={sm}>
+        <Form.Control
+          type={type}
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          isInvalid={!!errors[name]}
+        />
+        <Form.Control.Feedback type="invalid">
+          {errors[name]}
+        </Form.Control.Feedback>
+      </Col>
+    </Form.Group>
+  ), [formData, errors, handleChange]);
 
   return (
-    <>
-      <Modal
-        onClose={onHide}
-        size={size}
-        show={show}
-        onHide={onHide}
-        aria-labelledby="contained-modal-title-vcenter"
-        centered
-        backdrop="static"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title id="contained-modal-title-vcenter">Profile</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <form onSubmit={actionUpdate}>
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm="2">
-                Full Name
-              </Form.Label>
-              <Col sm="7">
-                <Form.Control
-                  type="text"
-                  placeholder=""
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Col>
-            </Form.Group>
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm="2">
-                Username
-              </Form.Label>
-              <Col sm="3">
-                <Form.Control
-                  type="text"
-                  placeholder=""
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </Col>
-            </Form.Group>
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm="2">
-                Password
-              </Form.Label>
-              <Col sm="3">
-                <Form.Control
-                  type="password"
-                  placeholder=""
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Col>
-            </Form.Group>
-            <Form.Group as={Row} className="mb-3">
-              <Form.Label column sm="2">
-                Confirm Password
-              </Form.Label>
-              <Col sm="3">
-                <Form.Control
-                  type="password"
-                  placeholder=""
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </Col>
-            </Form.Group>
-            <Row>
-              <Col md={{ span: 10, offset: 2 }}>
-                <Button type="submit" variant="primary">
-                  Submit
-                </Button>
-              </Col>
-            </Row>
-          </form>
-        </Modal.Body>
-      </Modal>
-    </>
+    <Modal
+      show={show}
+      onHide={onHide}
+      size={size}
+      aria-labelledby="contained-modal-title-vcenter"
+      centered
+      backdrop="static"
+    >
+      <Modal.Header closeButton>
+        <Modal.Title id="contained-modal-title-vcenter">Profile</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <form onSubmit={actionUpdate}>
+          {renderFormField("Full Name", "name", "text", "7")}
+          {renderFormField("Username", "userName")}
+          {renderFormField("Password", "password", "password")}
+          {renderFormField("Confirm Password", "confirmPassword", "password")}
+          
+          <Row>
+            <Col md={{ span: 10, offset: 2 }}>
+              <Button type="submit" variant="primary">
+                Submit
+              </Button>
+            </Col>
+          </Row>
+        </form>
+      </Modal.Body>
+    </Modal>
   );
 };
 
 ProfilModal.propTypes = {
-  show: PropTypes.bool,
-  onHide: PropTypes.func,
+  show: PropTypes.bool.isRequired,
+  onHide: PropTypes.func.isRequired,
   size: PropTypes.string,
+};
+
+ProfilModal.defaultProps = {
+  size: "md",
 };
 
 export default ProfilModal;
