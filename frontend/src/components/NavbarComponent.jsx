@@ -5,26 +5,105 @@ import Navbar from "react-bootstrap/Navbar";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import secureLocalStorage from "react-secure-storage";
 import ProfilModal from "./ProfilModal.jsx";
-import { useState } from "react";
-import { FaBuffer, FaChartBar } from "react-icons/fa";
+import { useState, useMemo, useCallback } from "react";
+import { FaBuffer, FaChartBar, FaUser, FaSignOutAlt } from "react-icons/fa";
 import { GrTransaction } from "react-icons/gr";
+
+// Konstanta untuk menu navigasi
+const NAVIGATION_MENU = {
+  master: {
+    title: "Master",
+    icon: FaBuffer,
+    items: [
+      { label: "Category", path: "/category" },
+      { label: "Supplier", path: "/supplier" },
+      { label: "Product", path: "/product" },
+    ],
+  },
+  transaction: {
+    title: "Transaction",
+    icon: GrTransaction,
+    items: [
+      { label: "Sales", path: "/sales" },
+      { label: "Sales History", path: "/sales-history" },
+      { label: "Purchase", path: "/purchase" },
+    ],
+  },
+  report: {
+    title: "Report",
+    icon: FaChartBar,
+    items: [
+      { label: "Supplier", path: "/supplier-report" },
+      { label: "Product", path: "/product-report" },
+      { label: "Sales", path: "/sales-report" },
+      { label: "Purchase", path: "/purchase-report" },
+    ],
+  },
+};
+
+// Komponen untuk menu dropdown
+const NavigationDropdown = ({ title, icon: Icon, items }) => (
+  <NavDropdown
+    title={
+      <>
+        <Icon /> {title}
+      </>
+    }
+    id={`nav-dropdown-${title.toLowerCase()}`}
+  >
+    {items.map((item) => (
+      <NavDropdown.Item key={item.path} href={item.path}>
+        {item.label}
+      </NavDropdown.Item>
+    ))}
+  </NavDropdown>
+);
+
+// Komponen untuk user menu
+const UserMenu = ({ avatar, name, onProfileClick }) => (
+  <NavDropdown
+    title={
+      <>
+        {avatar} {name}
+      </>
+    }
+    id="user-nav-dropdown"
+  >
+    <NavDropdown.Item href="#" onClick={onProfileClick}>
+      <FaUser className="me-2" />
+      Profil
+    </NavDropdown.Item>
+    <NavDropdown.Item href="/logout">
+      <FaSignOutAlt className="me-2" />
+      Logout
+    </NavDropdown.Item>
+  </NavDropdown>
+);
 
 const NavbarComponent = () => {
   const [modalShow, setModalShow] = useState(false);
-  const user = secureLocalStorage.getItem("user");
-  let nama = "User";
-  if (user) {
-    nama = user.name;
-  }
+  
+  // Menggunakan useMemo untuk menghindari re-render yang tidak perlu
+  const user = useMemo(() => secureLocalStorage.getItem("user"), []);
+  const userName = useMemo(() => user?.name || "User", [user]);
 
-  const avatar = (
-    <Image
-      src={"/img/img_avatar.png"}
-      alt="User"
-      roundedCircle
-      style={{ width: "30px" }}
-    />
+  // Menggunakan useCallback untuk fungsi event handler
+  const handleProfileClick = useCallback(() => setModalShow(true), []);
+  const handleModalClose = useCallback(() => setModalShow(false), []);
+
+  // Avatar component dengan useMemo
+  const avatar = useMemo(
+    () => (
+      <Image
+        src="/img/img_avatar.png"
+        alt="User"
+        roundedCircle
+        style={{ width: "30px" }}
+      />
+    ),
+    []
   );
+
   return (
     <Navbar expand="lg" className="bg-body-tertiary print">
       <Container fluid>
@@ -32,74 +111,28 @@ const NavbarComponent = () => {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            <NavDropdown
-              title={
-                <>
-                  <FaBuffer /> {"Master"}
-                </>
-              }
-              id="basic-nav-dropdown"
-            >
-              <NavDropdown.Item href="/category">Category</NavDropdown.Item>
-              <NavDropdown.Item href="/supplier">Supplier</NavDropdown.Item>
-              <NavDropdown.Item href="/product">Product</NavDropdown.Item>
-            </NavDropdown>
-            <NavDropdown
-              title={
-                <>
-                  <GrTransaction /> {"Transaction"}
-                </>
-              }
-              id="basic-nav-dropdown"
-            >
-              <NavDropdown.Item href="/sales">Sales</NavDropdown.Item>
-              <NavDropdown.Item href="/sales-history">
-                Sales History
-              </NavDropdown.Item>
-              <NavDropdown.Item href="/purchase">Purchase</NavDropdown.Item>
-            </NavDropdown>
-            <NavDropdown
-              title={
-                <>
-                  <FaChartBar /> {"Report"}
-                </>
-              }
-              id="basic-nav-dropdown"
-            >
-              <NavDropdown.Item href="/supplier-report">
-                Supplier
-              </NavDropdown.Item>
-              <NavDropdown.Item href="/product-report">
-                Product
-              </NavDropdown.Item>
-              <NavDropdown.Item href="/sales-report">Sales</NavDropdown.Item>
-              <NavDropdown.Item href="/purchase-report">
-                Purchase
-              </NavDropdown.Item>
-            </NavDropdown>
+            {Object.entries(NAVIGATION_MENU).map(([key, menu]) => (
+              <NavigationDropdown
+                key={key}
+                title={menu.title}
+                icon={menu.icon}
+                items={menu.items}
+              />
+            ))}
           </Nav>
           <Nav>
-            <NavDropdown
-              title={
-                <>
-                  {avatar} {nama}
-                </>
-              }
-              id="collapsible-nav-dropdown"
-            >
-              <NavDropdown.Item href="#" onClick={() => setModalShow(true)}>
-                Profil
-              </NavDropdown.Item>
-              <NavDropdown.Item href="/logout">Logout</NavDropdown.Item>
-            </NavDropdown>
+            <UserMenu
+              avatar={avatar}
+              name={userName}
+              onProfileClick={handleProfileClick}
+            />
           </Nav>
         </Navbar.Collapse>
       </Container>
       <ProfilModal
         show={modalShow}
         size="xl"
-        modalTitle="Search Supplier"
-        onHide={() => setModalShow(false)}
+        onHide={handleModalClose}
       />
     </Navbar>
   );
