@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button, Col, Form, InputGroup, Row } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllProduct } from "../../features/ProductSlice.js";
@@ -8,6 +8,8 @@ import { FaSearch } from "react-icons/fa";
 import { axiosInstance } from "../../auth/AxiosConfig.jsx";
 import { addToCart, updateCart } from "../../features/CartSlice.js";
 import secureLocalStorage from "react-secure-storage";
+import { FixedSizeGrid } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 const ListProduct = () => {
   const [query, setQuery] = useState("");
@@ -69,42 +71,53 @@ const ListProduct = () => {
     }
   };
 
+  const Cell = ({ columnIndex, rowIndex, style }) => {
+    const index = rowIndex * 4 + columnIndex;
+    if (index >= products.length) return null;
+    
+    return (
+      <div style={style}>
+        <CardProduct
+          product={products[index]}
+          onAddToCart={() => setCart(products[index])}
+        />
+      </div>
+    );
+  };
+
   return (
-    <>
-      <Col md={8} lg={7}>
-        <div className="bg-body-tertiary rounded p-3">
-          <Row>
-            <Col md={4}>
-              <h4>Product Detail</h4>
-            </Col>
-            <Col md={8}>
-              <form onSubmit={serchData}>
-                <InputGroup className="mb-3">
-                  <Form.Control
-                    placeholder="Search ..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                  <Button type="submit" variant="primary">
-                    <FaSearch /> Search
-                  </Button>
-                </InputGroup>
-              </form>
-            </Col>
-          </Row>
-          {loading ? "Loading..." : ""}
-          <Row>
-            {products.map((product) => (
-              <CardProduct
-                key={product.id}
-                product={product}
-                setCart={setCart}
-              />
-            ))}
-          </Row>
-        </div>
-      </Col>
-    </>
+    <div className="container-fluid" style={{ height: 'calc(100vh - 200px)' }}>
+      <Form onSubmit={serchData} className="mb-3">
+        <InputGroup>
+          <Form.Control
+            type="text"
+            placeholder="Search products..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <Button type="submit" variant="outline-secondary">
+            <FaSearch />
+          </Button>
+        </InputGroup>
+      </Form>
+
+      <div style={{ height: '100%' }}>
+        <AutoSizer>
+          {({ height, width }) => (
+            <FixedSizeGrid
+              columnCount={4}
+              columnWidth={width / 4}
+              height={height}
+              rowCount={Math.ceil(products.length / 4)}
+              rowHeight={300}
+              width={width}
+            >
+              {Cell}
+            </FixedSizeGrid>
+          )}
+        </AutoSizer>
+      </div>
+    </div>
   );
 };
 
