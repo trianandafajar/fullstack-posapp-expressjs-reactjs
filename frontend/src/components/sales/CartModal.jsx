@@ -1,7 +1,7 @@
 import { Button, Form, Modal } from "react-bootstrap";
 import PropTypes from "prop-types";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { deleteCart, updateCart } from "../../features/CartSlice.js";
 import { toast } from "react-toastify";
 import { MdCancel } from "react-icons/md";
@@ -9,17 +9,17 @@ import { FaCheck } from "react-icons/fa";
 import { confirmAlert } from "react-confirm-alert";
 import secureLocalStorage from "react-secure-storage";
 
-const CartModal = (props) => {
+const CartModal = memo((props) => {
   const dispatch = useDispatch();
   const dataEdit = useSelector((state) => state.cart.dataEdit);
   const error = useSelector((state) => state.cart.error);
   const [data, setData] = useState({});
 
-  const updateData = () => {
+  const updateData = useCallback(() => {
     dispatch(updateCart(data));
-  };
+  }, [dispatch, data]);
 
-  const actionDelete = (id) => {
+  const actionDelete = useCallback((id) => {
     const user = secureLocalStorage.getItem("user");
     const data = { id: id, userId: user.id };
     if (dispatch(deleteCart(data))) {
@@ -28,7 +28,7 @@ const CartModal = (props) => {
         position: "top-center",
       });
     }
-  };
+  }, [dispatch, props]);
 
   useEffect(() => {
     if (error) {
@@ -36,9 +36,9 @@ const CartModal = (props) => {
         position: "top-center",
       });
     }
-  }, [error, props]);
+  }, [error]);
 
-  const confirmDel = (id) => {
+  const confirmDel = useCallback((id) => {
     confirmAlert({
       customUI: ({ onClose }) => {
         return (
@@ -63,71 +63,50 @@ const CartModal = (props) => {
         );
       },
     });
-  };
+  }, [actionDelete]);
 
   useEffect(() => {
     setData(dataEdit);
   }, [dataEdit]);
+
   return (
     <Modal
       {...props}
-      size="lg"
+      size={props.size}
       aria-labelledby="contained-modal-title-vcenter"
       centered
-      backdrop="static"
     >
       <Modal.Header closeButton>
         <Modal.Title id="contained-modal-title-vcenter">
-          Edit {data ? data.productName : ""}
+          Edit Cart
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form>
-          <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
-            <Form.Label>Jumlah</Form.Label>
+          <Form.Group className="mb-3">
+            <Form.Label>Quantity</Form.Label>
             <Form.Control
-              type="text"
-              placeholder=""
-              value={data ? data.qty : 0}
+              type="number"
+              value={data.qty}
               onChange={(e) => setData({ ...data, qty: e.target.value })}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="exampleForm.ControlTextarea1">
-            <Form.Label>Keterangan</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              value={data ? data.note : ""}
-              onChange={(e) => setData({ ...data, note: e.target.value })}
             />
           </Form.Group>
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button
-          onClick={() => {
-            props.onHide(), updateData();
-          }}
-          variant="success"
-        >
-          Update
-        </Button>
-        <Button
-          onClick={() => {
-            props.onHide(), confirmDel(data.id);
-          }}
-          variant="danger"
-        >
+        <Button variant="danger" onClick={() => confirmDel(data.id)}>
           Delete
         </Button>
-        <Button onClick={props.onHide}>Close</Button>
+        <Button onClick={updateData}>Update</Button>
       </Modal.Footer>
     </Modal>
   );
-};
+});
 
 CartModal.propTypes = {
+  show: PropTypes.bool,
   onHide: PropTypes.func,
+  size: PropTypes.string,
 };
 
 export default CartModal;
